@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Earth Imagery API</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .container:hover {
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        h1 {
+            text-align: center;
+            color: #444;
+            font-weight: 700;
+        }
+        p {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            border: none;
+            background-color: #28a745;
+            color: white;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #e9ecef;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            display: none;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            font-size: 18px;
+            color: #333;
+        }
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-top: 4px solid #333;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error {
+            color: red;
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to the Earth Imagery API</h1>
+        <p>Use the endpoint <code>/v5000/earth/imagery/</code> to get satellite imagery.</p>
+        <p>Example usage: <code>/v5000/earth/imagery/?lon=-95.21&lat=29.67&date=2018&dim=0.32</code></p>
+        <p><strong>Note:</strong> If no images are found for the given date, try changing the year.</p>
+        <form id="api-form">
+            <div class="form-group">
+                <label for="lon">Longitude:</label>
+                <input type="text" id="lon" name="lon" value="-95.21" required>
+            </div>
+            <div class="form-group">
+                <label for="lat">Latitude:</label>
+                <input type="text" id="lat" name="lat" value="29.67" required>
+            </div>
+            <div class="form-group">
+                <label for="date">Year:</label>
+                <input type="number" id="date" name="date" value="2018" required>
+            </div>
+            <div class="form-group">
+                <label for="dim">Dimension:</label>
+                <input type="number" id="dim" name="dim" value="0.32" step="0.01" required>
+            </div>
+            <button type="submit">Get Image</button>
+        </form>
+        <div id="loading-url" class="loading">
+            <div class="spinner"></div>
+            Loading URL...
+        </div>
+        <div id="loading-image" class="loading">
+            <div class="spinner"></div>
+            Loading Image...
+        </div>
+        <div id="result" class="result">
+            <p><strong>Image URL:</strong> <span id="image-url"></span></p>
+            <img id="image" src="" alt="Satellite Image" style="max-width: 100%;">
+        </div>
+        <div id="error" class="error"></div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script>
+        document.getElementById('api-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            var lon = document.getElementById('lon').value;
+            var lat = document.getElementById('lat').value;
+            var date = document.getElementById('date').value;
+            var dim = document.getElementById('dim').value;
+
+            document.getElementById('loading-url').style.display = 'block';
+            document.getElementById('loading-image').style.display = 'none';
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+
+            anime({
+                targets: '#loading-url .spinner',
+                rotate: '1turn',
+                easing: 'linear',
+                loop: true,
+                duration: 1000
+            });
+
+            fetch(`/v5000/earth/imagery/?lon=${lon}&lat=${lat}&date=${date}&dim=${dim}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('loading-url').style.display = 'none';
+                    if (data.url) {
+                        document.getElementById('image-url').textContent = data.url;
+                        document.getElementById('result').style.display = 'block';
+                        document.getElementById('loading-image').style.display = 'block';
+                        
+                        anime({
+                            targets: '#loading-image .spinner',
+                            rotate: '1turn',
+                            easing: 'linear',
+                            loop: true,
+                            duration: 1000
+                        });
+
+                        var image = document.getElementById('image');
+                        image.onload = function() {
+                            document.getElementById('loading-image').style.display = 'none';
+                        };
+                        image.src = data.url;
+                    } else {
+                        document.getElementById('error').style.display = 'block';
+                        document.getElementById('error').textContent = 'Error: ' + data.error;
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('loading-url').style.display = 'none';
+                    document.getElementById('error').style.display = 'block';
+                    document.getElementById('error').textContent = 'Error: ' + error.message;
+                });
+        });
+    </script>
+</body>
+</html>
